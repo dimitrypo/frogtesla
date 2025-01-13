@@ -21,20 +21,22 @@ private:
   void updateState();
   void updateStep();
 
+  bool mapboxPublicKeySet;
+  bool mapboxSecretKeySet;
+  bool setupCompleted;
+
   ButtonControl *publicMapboxKeyControl;
   ButtonControl *secretMapboxKeyControl;
   ButtonControl *setupButton;
 
   ButtonParamControl *searchInput;
 
+  FrogPilotSettingsWindow *parent;
+
   LabelControl *ipLabel;
 
   Params params;
   Params paramsStorage{"/persist/params"};
-
-  bool mapboxPublicKeySet;
-  bool mapboxSecretKeySet;
-  bool setupCompleted;
 
   QLabel *imageLabel;
 };

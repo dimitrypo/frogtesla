@@ -17,31 +17,19 @@ private:
   void hideToggles();
   void showEvent(QShowEvent *event) override;
   void showToggles(const std::set<QString> &keys);
-  void updateMetric();
+  void updateMetric(bool metric, bool bootRun);
   void updateState(const UIState &s);
-
-  FrogPilotParamValueButtonControl *steerFrictionToggle;
-  FrogPilotParamValueButtonControl *steerLatAccelToggle;
-  FrogPilotParamValueButtonControl *steerKPToggle;
-  FrogPilotParamValueButtonControl *steerRatioToggle;
-
-  FrogPilotSettingsWindow *parent;
-
-  QJsonObject frogpilotToggleLevels;
-
-  Params params;
 
   bool hasAutoTune;
   bool hasNNFFLog;
-  bool isMetric = params.getBool("IsMetric");
   bool isPIDCar;
   bool isSubaru;
   bool liveValid;
   bool started;
 
-  float steerFrictionStock;
-  float steerLatAccelStock;
-  float steerKPStock;
+  float frictionStock;
+  float latAccelStock;
+  float kpStock;
   float steerRatioStock;
 
   int tuningLevel;
@@ -53,4 +41,15 @@ private:
   std::set<QString> laneChangeKeys = {"LaneChangeTime", "LaneDetectionWidth", "MinimumLaneChangeSpeed", "NudgelessLaneChange", "OneLaneChange"};
   std::set<QString> lateralTuneKeys = {"NNFF", "NNFFLite", "TurnDesires"};
   std::set<QString> qolKeys = {"PauseLateralSpeed"};
+
+  FrogPilotParamValueButtonControl *steerFrictionToggle;
+  FrogPilotParamValueButtonControl *steerLatAccelToggle;
+  FrogPilotParamValueButtonControl *steerKPToggle;
+  FrogPilotParamValueButtonControl *steerRatioToggle;
+
+  FrogPilotSettingsWindow *parent;
+
+  QJsonObject frogpilotToggleLevels;
+
+  Params params;
 };

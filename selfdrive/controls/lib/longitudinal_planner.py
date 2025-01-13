@@ -52,7 +52,7 @@ def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   return [a_target[0], min(a_target[1], a_x_allowed)]
 
 
-def get_accel_from_plan_classic(CP, speeds, accels):
+def get_accel_from_plan_classic(CP, speeds, accels, vEgoStopping):
   if len(speeds) == CONTROL_N:
     v_target_now = interp(DT_MDL, CONTROL_N_T_IDX, speeds)
     a_target_now = interp(DT_MDL, CONTROL_N_T_IDX, accels)
@@ -68,8 +68,8 @@ def get_accel_from_plan_classic(CP, speeds, accels):
     v_target = 0.0
     v_target_1sec = 0.0
     a_target = 0.0
-  should_stop = (v_target < CP.vEgoStopping and
-                 v_target_1sec < CP.vEgoStopping)
+  should_stop = (v_target < vEgoStopping and
+                 v_target_1sec < vEgoStopping)
   return a_target, should_stop
 
 
@@ -203,7 +203,7 @@ class LongitudinalPlanner:
       throttle_prob = 1.0
     return x, v, a, j, throttle_prob
 
-  def update(self, classic_model, radarless_model, sm, frogpilot_toggles):
+  def update(self, radarless_model, sm, frogpilot_toggles):
     self.mpc.mode = 'blended' if sm['controlsState'].experimentalMode else 'acc'
 
     if len(sm['carControl'].orientationNED) == 3:
@@ -247,7 +247,7 @@ class LongitudinalPlanner:
     # Don't clip at low speeds since throttle_prob doesn't account for creep
     self.allow_throttle = throttle_prob > ALLOW_THROTTLE_THRESHOLD or v_ego <= MIN_ALLOW_THROTTLE_SPEED
 
-    if not self.allow_throttle and not classic_model:
+    if not self.allow_throttle:
       clipped_accel_coast = max(accel_coast, accel_limits_turns[0])
       clipped_accel_coast_interp = interp(v_ego, [MIN_ALLOW_THROTTLE_SPEED, MIN_ALLOW_THROTTLE_SPEED*2], [accel_limits_turns[1], clipped_accel_coast])
       accel_limits_turns[1] = min(accel_limits_turns[1], clipped_accel_coast_interp)
@@ -294,7 +294,7 @@ class LongitudinalPlanner:
     self.a_desired = float(interp(self.dt, CONTROL_N_T_IDX, self.a_desired_trajectory))
     self.v_desired_filter.x = self.v_desired_filter.x + self.dt * (self.a_desired + a_prev) / 2.0
 
-  def publish(self, classic_model, sm, pm):
+  def publish(self, classic_model, sm, pm, frogpilot_toggles):
     plan_send = messaging.new_message('longitudinalPlan')
 
     plan_send.valid = sm.all_checks(service_list=['carState', 'controlsState'])
@@ -313,11 +313,11 @@ class LongitudinalPlanner:
     longitudinalPlan.fcw = self.fcw
 
     if classic_model:
-      a_target, should_stop = get_accel_from_plan_classic(self.CP, longitudinalPlan.speeds, longitudinalPlan.accels)
+      a_target, should_stop = get_accel_from_plan_classic(self.CP, longitudinalPlan.speeds, longitudinalPlan.accels, vEgoStopping=frogpilot_toggles.vEgoStopping)
     else:
       action_t = self.CP.longitudinalActuatorDelay + DT_MDL
       a_target, should_stop = get_accel_from_plan(longitudinalPlan.speeds, longitudinalPlan.accels,
-                                                  action_t=action_t, vEgoStopping=self.CP.vEgoStopping)
+                                                  action_t=action_t, vEgoStopping=frogpilot_toggles.vEgoStopping)
     longitudinalPlan.aTarget = a_target
     longitudinalPlan.shouldStop = should_stop
     longitudinalPlan.allowBrake = True

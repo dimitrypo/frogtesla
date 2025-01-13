@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from openpilot.common.params import Params
 from openpilot.common.realtime import DT_MDL
 

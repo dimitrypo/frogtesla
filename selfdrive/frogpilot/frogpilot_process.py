@@ -1,7 +1,5 @@
+#!/usr/bin/env python3
 import datetime
-import json
-import subprocess
-import threading
 import time
 
 import openpilot.system.sentry as sentry
@@ -19,52 +17,12 @@ from openpilot.selfdrive.frogpilot.assets.theme_manager import ThemeManager
 from openpilot.selfdrive.frogpilot.controls.frogpilot_planner import FrogPilotPlanner
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_tracking import FrogPilotTracking
 from openpilot.selfdrive.frogpilot.frogpilot_functions import backup_toggles
-from openpilot.selfdrive.frogpilot.frogpilot_utilities import is_url_pingable
+from openpilot.selfdrive.frogpilot.frogpilot_utilities import flash_panda, is_url_pingable, lock_doors, run_thread_with_lock, update_maps, update_openpilot
 from openpilot.selfdrive.frogpilot.frogpilot_variables import FrogPilotVariables, get_frogpilot_toggles, params, params_memory
-from openpilot.selfdrive.frogpilot.navigation.mapd import ensure_mapd_is_running, update_mapd
 
-locks = {
-  "backup_toggles": threading.Lock(),
-  "download_all_models": threading.Lock(),
-  "download_model": threading.Lock(),
-  "download_theme": threading.Lock(),
-  "ensure_mapd_is_running": threading.Lock(),
-  "update_checks": threading.Lock(),
-  "update_mapd": threading.Lock(),
-  "update_models": threading.Lock(),
-  "update_themes": threading.Lock()
-}
-
-running_threads = {}
-
-def run_thread_with_lock(name, target, args=()):
-  if not running_threads.get(name, threading.Thread()).is_alive():
-    with locks[name]:
-      thread = threading.Thread(target=target, args=args)
-      thread.start()
-      running_threads[name] = thread
-
-def automatic_update_check():
-  subprocess.run(["pkill", "-SIGUSR1", "-f", "system.updated.updated"], check=False)
-  time.sleep(60)
-
-  if not params.get_bool("UpdaterFetchAvailable"):
-    return
-
-  while params.get("UpdaterState", encoding="utf8") != "idle":
-    time.sleep(60)
-
-  subprocess.run(["pkill", "-SIGHUP", "-f", "system.updated.updated"], check=False)
-  while not params.get_bool("UpdateAvailable"):
-    time.sleep(60)
-
-  while params.get_bool("IsOnroad"):
-    time.sleep(60)
-
-  HARDWARE.reboot()
-
-def check_assets(model_manager, theme_manager, frogpilot_toggles):
-  run_thread_with_lock("ensure_mapd_is_running", ensure_mapd_is_running)
+def assets_checks(model_manager, theme_manager):
+  if params_memory.get_bool("FlashPanda"):
+    run_thread_with_lock("flash_panda", flash_panda)
 
   if params_memory.get_bool("DownloadAllModels"):
     run_thread_with_lock("download_all_models", model_manager.download_all_models)
@@ -87,44 +45,16 @@ def check_assets(model_manager, theme_manager, frogpilot_toggles):
     if asset_to_download is not None:
       run_thread_with_lock("download_theme", theme_manager.download_theme, (asset_type, asset_to_download, param))
 
-def update_checks(manually_updated, model_manager, now, theme_manager, frogpilot_toggles):
-  if not (is_url_pingable("https://github.com") or is_url_pingable("https://gitlab.com")):
-    return
+def update_checks(manually_updated, model_manager, now, theme_manager, frogpilot_toggles, boot_run=False):
+  while not (is_url_pingable("https://github.com") or is_url_pingable("https://gitlab.com")):
+    time.sleep(60)
 
-  if frogpilot_toggles.automatic_updates and not manually_updated:
-    automatic_update_check()
-
-  update_maps(now)
-
-  run_thread_with_lock("update_mapd", update_mapd)
-  run_thread_with_lock("update_models", model_manager.update_models)
-  run_thread_with_lock("update_themes", theme_manager.update_themes, (frogpilot_toggles,))
+  run_thread_with_lock("update_maps", update_maps, (now,))
+  run_thread_with_lock("update_models", model_manager.update_models, (boot_run,))
+  run_thread_with_lock("update_openpilot", update_openpilot, (manually_updated, frogpilot_toggles,))
+  run_thread_with_lock("update_themes", theme_manager.update_themes, (frogpilot_toggles, boot_run,))
 
   time.sleep(1)
-
-def update_maps(now):
-  maps_selected = json.loads(params.get("MapsSelected", encoding='utf8'))
-  if not (maps_selected.get("nations") or maps_selected.get("states")):
-    return
-
-  day = now.day
-  is_first = day == 1
-  is_Sunday = now.weekday() == 6
-  schedule = params.get_int("PreferredSchedule")
-
-  maps_downloaded = Path("/data/media/0/osm/offline").exists()
-  if maps_downloaded and (schedule == 0 or (schedule == 1 and not is_Sunday) or (schedule == 2 and not is_first)):
-    return
-
-  suffix = "th" if 4 <= day <= 20 or 24 <= day <= 30 else ["st", "nd", "rd"][day % 10 - 1]
-  todays_date = now.strftime(f"%B {day}{suffix}, %Y")
-
-  if params.get("LastMapsUpdate", encoding='utf-8') == todays_date:
-    return
-
-  if params.get("OSMDownloadProgress", encoding='utf-8') is None:
-    params_memory.put("OSMDownloadLocations", json.dumps(maps_selected))
-    params.put("LastMapsUpdate", todays_date)
 
 def frogpilot_thread():
   config_realtime_process(5, Priority.CTRL_LOW)
@@ -153,7 +83,8 @@ def frogpilot_thread():
   toggles_last_updated = datetime.datetime.now()
 
   pm = messaging.PubMaster(['frogpilotPlan'])
-  sm = messaging.SubMaster(['carControl', 'carState', 'controlsState', 'deviceState', 'modelV2', 'radarState',
+  sm = messaging.SubMaster(['carControl', 'carState', 'controlsState', 'deviceState', 'driverMonitoringState',
+                            'managerState', 'modelV2', 'pandaStates', 'radarState',
                             'frogpilotCarControl', 'frogpilotCarState', 'frogpilotNavigation'],
                             poll='modelV2', ignore_avg_freq=['radarState'])
 
@@ -165,10 +96,10 @@ def frogpilot_thread():
     started = sm['deviceState'].started
 
     if params_memory.get_bool("FrogPilotTogglesUpdated") or theme_updated:
-      theme_updated = theme_manager.update_active_theme(time_validated, frogpilot_toggles)
-
       frogpilot_variables.update(theme_manager.theme_assets["holiday_theme"], started)
       frogpilot_toggles = get_frogpilot_toggles()
+
+      theme_updated = theme_manager.update_active_theme(time_validated, frogpilot_toggles)
 
       if time_validated:
         run_thread_with_lock("backup_toggles", backup_toggles, (params_storage,))
@@ -184,6 +115,9 @@ def frogpilot_thread():
 
       frogpilot_variables.update(theme_manager.theme_assets["holiday_theme"], started)
       frogpilot_toggles = get_frogpilot_toggles()
+
+      if frogpilot_toggles.lock_doors_timer != 0:
+        run_thread_with_lock("lock_doors", lock_doors, (frogpilot_toggles.lock_doors_timer, sm))
     elif started and not started_previously:
       radarless_model = frogpilot_toggles.radarless_model
 
@@ -193,12 +127,11 @@ def frogpilot_thread():
     if started and sm.updated['modelV2']:
       frogpilot_planner.update(sm['carControl'], sm['carState'], sm['controlsState'], sm['frogpilotCarControl'], sm['frogpilotCarState'],
                                sm['frogpilotNavigation'], sm['modelV2'], radarless_model, sm['radarState'], frogpilot_toggles)
-      frogpilot_planner.publish(sm, pm, theme_updated, toggles_updated, frogpilot_toggles)
+      frogpilot_planner.publish(sm, pm, toggles_updated)
 
       frogpilot_tracking.update(sm['carState'], sm['controlsState'], sm['frogpilotCarControl'])
-    elif toggles_updated:
+    elif not started and toggles_updated:
       frogpilot_plan_send = messaging.new_message('frogpilotPlan')
-      frogpilot_plan_send.frogpilotPlan.themeUpdated = theme_updated
       frogpilot_plan_send.frogpilotPlan.togglesUpdated = toggles_updated
       pm.send('frogpilotPlan', frogpilot_plan_send)
 
@@ -206,7 +139,7 @@ def frogpilot_thread():
 
     if now.second % 2 == 0:
       if not assets_checked:
-        check_assets(model_manager, theme_manager, frogpilot_toggles)
+        assets_checks(model_manager, theme_manager)
 
         assets_checked = True
     else:
@@ -215,7 +148,7 @@ def frogpilot_thread():
     manually_updated = params_memory.get_bool("ManualUpdateInitiated")
 
     run_update_checks |= manually_updated
-    run_update_checks |= now.second == 0 and (now.minute % 60 == 0 or frogpilot_toggles.frogs_go_moo)
+    run_update_checks |= now.second == 0 and (now.minute % 60 == 0 or now.minute % 5 == 0 and frogpilot_toggles.frogs_go_moo)
     run_update_checks &= time_validated
 
     if run_update_checks:
@@ -229,8 +162,7 @@ def frogpilot_thread():
         continue
 
       theme_updated = theme_manager.update_active_theme(time_validated, frogpilot_toggles)
-      run_thread_with_lock("update_models", model_manager.update_models, (True,))
-      run_thread_with_lock("update_themes", theme_manager.update_themes, (frogpilot_toggles, True,))
+      run_thread_with_lock("update_checks", update_checks, (manually_updated, model_manager, now, theme_manager, frogpilot_toggles, True))
 
 def main():
   frogpilot_thread()

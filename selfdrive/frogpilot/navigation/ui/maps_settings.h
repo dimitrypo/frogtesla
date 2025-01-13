@@ -26,12 +26,23 @@ private:
   void updateDownloadStatusLabels();
   void updateState(const UIState &s);
 
+  bool countriesOpen;
+  bool downloadActive;
+  bool hasMapsSelected;
+  bool mapdExists;
+
+  qint64 startTime;
+
+  std::string mapsSelected;
+
   ButtonControl *downloadMapsButton;
   ButtonControl *removeMapsButton;
 
   ButtonParamControl *preferredSchedule;
 
   FrogPilotButtonsControl *selectMapsButton;
+
+  FrogPilotSettingsWindow *parent;
 
   LabelControl *africaLabel;
   LabelControl *antarcticaLabel;
@@ -68,12 +79,4 @@ private:
   Params params_memory{"/dev/shm/params"};
 
   QString mapsFolderPath = "/data/media/0/osm/offline";
-
-  bool countriesOpen;
-  bool downloadActive;
-  bool hasMapsSelected;
-
-  qint64 startTime;
-
-  std::string mapsSelected;
 };

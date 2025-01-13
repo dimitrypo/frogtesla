@@ -1,6 +1,6 @@
 #include "selfdrive/frogpilot/navigation/ui/primeless_settings.h"
 
-FrogPilotPrimelessPanel::FrogPilotPrimelessPanel(FrogPilotSettingsWindow *parent) : FrogPilotListWidget(parent) {
+FrogPilotPrimelessPanel::FrogPilotPrimelessPanel(FrogPilotSettingsWindow *parent) : FrogPilotListWidget(parent), parent(parent) {
   addItem(ipLabel = new LabelControl(tr("Manage Your Settings At"), tr("Device Offline")));
 
   std::vector<QString> searchOptions{tr("MapBox"), tr("Amap"), tr("Google")};
@@ -52,6 +52,8 @@ void FrogPilotPrimelessPanel::updateState() {
 
     updateStep();
   }
+
+  parent->keepScreenOn = imageLabel->isVisible();
 }
 
 void FrogPilotPrimelessPanel::createMapboxKeyControl(ButtonControl *&control, const QString &label, const std::string &paramKey, const QString &prefix) {

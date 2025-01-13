@@ -1,6 +1,7 @@
 #pragma once
 
 #include "selfdrive/ui/qt/offroad/settings.h"
+#include "selfdrive/ui/qt/widgets/scrollview.h"
 
 class FrogPilotSettingsWindow : public QFrame {
   Q_OBJECT
@@ -12,7 +13,6 @@ public:
 
   QJsonObject frogpilotToggleLevels;
 
-  bool forcingAutoTune = false;
   bool hasAutoTune = true;
   bool hasBSM = true;
   bool hasDashSpeedLimits = true;
@@ -31,11 +31,12 @@ public:
   bool isSubaru = false;
   bool isToyota = true;
   bool isVolt = true;
+  bool keepScreenOn = false;
   bool liveValid = false;
 
-  float steerFrictionStock;
-  float steerKPStock;
-  float steerLatAccelStock;
+  float frictionStock;
+  float kpStock;
+  float latAccelStock;
   float steerRatioStock;
 
   int tuningLevel;
@@ -50,17 +51,19 @@ signals:
   void openPanel();
   void openParentToggle();
   void openSubParentToggle();
-  void updateMetric();
+  void updateMetric(bool metric, bool bootRun=false);
 
 private:
-  void addPanelControl(FrogPilotListWidget *list, QString &title, QString &desc, std::vector<QString> &button_labels, QString &icon, std::vector<QWidget*> &panels, QString &currentPanel);
   void closePanel();
-  void showEvent(QShowEvent *event) override;
-  void updatePanelVisibility();
+  void createPanelButtons(FrogPilotListWidget *list);
+  void hideEvent(QHideEvent *event) override;
+  void updateState();
 
-  FrogPilotButtonsControl *drivingButton;
-  FrogPilotButtonsControl *navigationButton;
-  FrogPilotButtonsControl *systemButton;
+  bool panelOpen;
+
+  FrogPilotButtonsControl *drivingPanelButtons;
+  FrogPilotButtonsControl *navigationPanelButtons;
+  FrogPilotButtonsControl *systemPanelButtons;
 
   Params params;
   Params params_memory{"/dev/shm/params"};
@@ -68,5 +71,5 @@ private:
 
   QStackedLayout *mainLayout;
 
-  QWidget *frogpilotSettingsWidget;
+  ScrollView *frogpilotPanel;
 };

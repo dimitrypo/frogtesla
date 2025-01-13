@@ -2,7 +2,7 @@ from cereal import car, custom
 from panda import Panda
 from panda.python import uds
 from openpilot.selfdrive.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerParams, TSS2_CAR, RADAR_ACC_CAR, NO_DSU_CAR, \
-                                        MIN_ACC_SPEED, PEDAL_TRANSITION, EPS_SCALE, UNSUPPORTED_DSU_CAR, NO_STOP_TIMER_CAR, ANGLE_CONTROL_CAR, STOP_AND_GO_CAR
+                                        MIN_ACC_SPEED, EPS_SCALE, UNSUPPORTED_DSU_CAR, NO_STOP_TIMER_CAR, ANGLE_CONTROL_CAR, STOP_AND_GO_CAR
 from openpilot.selfdrive.car import create_button_events, get_safety_config
 from openpilot.selfdrive.car.disable_ecu import disable_ecu
 from openpilot.selfdrive.car.interfaces import CarInterfaceBase
@@ -145,21 +145,15 @@ class CarInterface(CarInterfaceBase):
     # to a negative value, so it won't matter.
     ret.minEnableSpeed = -1. if (candidate in STOP_AND_GO_CAR or ret.enableGasInterceptor) else MIN_ACC_SPEED
 
-    if candidate in TSS2_CAR:
-      ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
+    ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
 
-      ret.vEgoStopping = 0.25
-      ret.vEgoStarting = 0.25
-      ret.stoppingDecelRate = 0.3  # reach stopping target smoothly
+    ret.vEgoStopping = 0.25
+    ret.vEgoStarting = 0.25
+    ret.stoppingDecelRate = 0.3  # reach stopping target smoothly
 
-      # Hybrids have much quicker longitudinal actuator response
-      if ret.flags & ToyotaFlags.HYBRID.value:
-        ret.longitudinalActuatorDelay = 0.05
-
-    if params.get_bool("FrogsGoMoosTweak"):
-      ret.stoppingDecelRate = 0.1  # reach stopping target smoothly
-      ret.vEgoStopping = 0.15
-      ret.vEgoStarting = 0.15
+    # Hybrids have much quicker longitudinal actuator response
+    if ret.flags & ToyotaFlags.HYBRID.value:
+      ret.longitudinalActuatorDelay = 0.05
 
     return ret
 

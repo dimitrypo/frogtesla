@@ -578,8 +578,8 @@ class Controls:
     # Update Torque Params
     if self.CP.lateralTuning.which() == 'torque':
       torque_params = self.sm['liveTorqueParameters']
-      friction = self.frogpilot_toggles.steer_friction if self.frogpilot_toggles.use_custom_steer_friction else torque_params.frictionCoefficientFiltered
-      lat_accel_factor = self.frogpilot_toggles.steer_lat_accel_factor if self.frogpilot_toggles.use_custom_lat_accel_factor else torque_params.latAccelFactorFiltered
+      friction = torque_params.frictionCoefficientFiltered
+      lat_accel_factor = torque_params.latAccelFactorFiltered
       if self.sm.all_checks(['liveTorqueParameters']) and (torque_params.useParams or self.frogpilot_toggles.force_auto_tune):
         self.LaC.update_live_torque_params(lat_accel_factor, torque_params.latAccelOffsetFiltered,
                                            friction)
@@ -627,7 +627,7 @@ class Controls:
         t_since_plan = (self.sm.frame - self.sm.recv_frame['longitudinalPlan']) * DT_CTRL
         actuators.accel = self.LoC.update_old_long(CC.longActive, CS, long_plan, pid_accel_limits, t_since_plan)
       else:
-        actuators.accel = self.LoC.update(CC.longActive, CS, long_plan.aTarget, long_plan.shouldStop or self.sm['frogpilotPlan'].forcingStopLength < 1, pid_accel_limits)
+        actuators.accel = self.LoC.update(CC.longActive, CS, long_plan.aTarget, long_plan.shouldStop or self.sm['frogpilotPlan'].forcingStopLength < 1, pid_accel_limits, self.frogpilot_toggles)
 
       if len(long_plan.speeds):
         actuators.speed = long_plan.speeds[-1]
@@ -758,6 +758,10 @@ class Controls:
     FPCC.fcwEventTriggered = self.fcw_event_triggered
     FPCC.noEntryEventTriggered = self.no_entry_alert_triggered
     FPCC.steerSaturatedEventTriggered = self.steer_saturated_event_triggered
+
+    # Update FrogPilot parameters
+    if self.sm['frogpilotPlan'].togglesUpdated:
+      self.frogpilot_toggles = get_frogpilot_toggles()
 
     return FPCC
 

@@ -2,14 +2,14 @@
 
 #include "selfdrive/frogpilot/ui/qt/offroad/frogpilot_settings.h"
 
-class UtilitiesPanel : public FrogPilotListWidget {
+class FrogPilotUtilitiesPanel : public FrogPilotListWidget {
   Q_OBJECT
 
 public:
-  explicit UtilitiesPanel(FrogPilotSettingsWindow *parent);
+  explicit FrogPilotUtilitiesPanel(FrogPilotSettingsWindow *parent);
 
 private:
-  FrogPilotButtonsControl *forceStartedBtn;
+  FrogPilotSettingsWindow *parent;
 
   Params params;
   Params params_memory{"/dev/shm/params"};

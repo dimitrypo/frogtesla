@@ -4,7 +4,7 @@
 
 #include "selfdrive/frogpilot/navigation/ui/maps_settings.h"
 
-FrogPilotMapsPanel::FrogPilotMapsPanel(FrogPilotSettingsWindow *parent) : FrogPilotListWidget(parent) {
+FrogPilotMapsPanel::FrogPilotMapsPanel(FrogPilotSettingsWindow *parent) : FrogPilotListWidget(parent), parent(parent) {
   std::vector<QString> scheduleOptions{tr("Manually"), tr("Weekly"), tr("Monthly")};
   preferredSchedule = new ButtonParamControl("PreferredSchedule", tr("Automatically Update Maps"),
                                           tr("Controls the frequency at which maps update with the latest OpenStreetMap (OSM) changes. "
@@ -107,9 +107,14 @@ FrogPilotMapsPanel::FrogPilotMapsPanel(FrogPilotSettingsWindow *parent) : FrogPi
 }
 
 void FrogPilotMapsPanel::showEvent(QShowEvent *event) {
+  mapdExists = std::filesystem::exists("/data/media/0/osm/mapd");
   mapsSelected = params.get("MapsSelected");
   hasMapsSelected = !QJsonDocument::fromJson(QByteArray::fromStdString(mapsSelected)).object().value("nations").toArray().isEmpty();
   hasMapsSelected |= !QJsonDocument::fromJson(QByteArray::fromStdString(mapsSelected)).object().value("states").toArray().isEmpty();
+
+  std::thread([this] {
+    mapsSize->setText(calculateDirectorySize(mapsFolderPath));
+  }).detach();
 }
 
 void FrogPilotMapsPanel::hideEvent(QHideEvent *event) {
@@ -123,11 +128,13 @@ void FrogPilotMapsPanel::updateState(const UIState &s) {
     return;
   }
 
-  if (downloadActive) {
+  if (downloadActive && s.sm->frame % (UI_FREQ / 2) == 0) {
     updateDownloadStatusLabels();
   }
 
-  downloadMapsButton->setEnabled(hasMapsSelected && s.scene.online);
+  downloadMapsButton->setEnabled(mapdExists && hasMapsSelected && s.scene.online);
+
+  parent->keepScreenOn = downloadActive;
 }
 
 void FrogPilotMapsPanel::cancelDownload() {

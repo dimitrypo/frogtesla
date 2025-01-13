@@ -76,6 +76,7 @@ void AnnotatedCameraWidget::updateState(int alert_height, const UIState &s) {
     speedLimit = nav_alive ? nav_instruction.getSpeedLimit() : 0.0;
   }
   speedLimit *= (s.scene.is_metric ? MS_TO_KPH : MS_TO_MPH);
+  speedLimit += (showSLCOffset || slcOverridden ? 0 : slcSpeedLimitOffset);
 
   has_us_speed_limit = (nav_alive && speed_limit_sign == cereal::NavInstruction::SpeedLimitSign::MUTCD) || !useViennaSLCSign && !hideSpeedLimit;
   has_eu_speed_limit = (nav_alive && speed_limit_sign == cereal::NavInstruction::SpeedLimitSign::VIENNA) || useViennaSLCSign && !hideSpeedLimit;
@@ -856,26 +857,10 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
       update_leads(s, radar_state, model.getPosition());
       auto lead_one = radar_state.getLeadOne();
       auto lead_two = radar_state.getLeadTwo();
-      auto lead_far = radar_state.getLeadFar();
       auto lead_left = radar_state.getLeadLeft();
       auto lead_right = radar_state.getLeadRight();
       auto lead_left_far = radar_state.getLeadLeftFar();
       auto lead_right_far = radar_state.getLeadRightFar();
-      if (lead_far.getStatus()) {
-        drawLead(painter, lead_far, s->scene.lead_vertices[2], v_ego, s->scene.lead_marker_color);
-      }
-      if (lead_left.getStatus()) {
-        drawLead(painter, lead_left, s->scene.lead_vertices[3], v_ego, blueColor(), true);
-      }
-      if (lead_right.getStatus()) {
-        drawLead(painter, lead_right, s->scene.lead_vertices[4], v_ego, purpleColor(), true);
-      }
-      if (lead_left_far.getStatus()) {
-        drawLead(painter, lead_left_far, s->scene.lead_vertices[5], v_ego, orangeColor(), true);
-      }
-      if (lead_right_far.getStatus()) {
-        drawLead(painter, lead_right_far, s->scene.lead_vertices[6], v_ego, redColor(), true);
-      }
       if (lead_two.getStatus()) {
         drawLead(painter, lead_two, s->scene.lead_vertices[1], v_ego, s->scene.lead_marker_color);
       } else if (lead_one.getStatus()) {
@@ -883,6 +868,18 @@ void AnnotatedCameraWidget::paintEvent(QPaintEvent *event) {
       } else {
         lead_x = 0;
         lead_y = 0;
+      }
+      if (lead_left.getStatus()) {
+        drawLead(painter, lead_left, s->scene.lead_vertices[2], v_ego, blueColor(), true);
+      }
+      if (lead_right.getStatus()) {
+        drawLead(painter, lead_right, s->scene.lead_vertices[3], v_ego, purpleColor(), true);
+      }
+      if (lead_left_far.getStatus()) {
+        drawLead(painter, lead_left_far, s->scene.lead_vertices[4], v_ego, orangeColor(), true);
+      }
+      if (lead_right_far.getStatus()) {
+        drawLead(painter, lead_right_far, s->scene.lead_vertices[5], v_ego, redColor(), true);
       }
     }
   }
@@ -1187,8 +1184,7 @@ void AnnotatedCameraWidget::drawCEMStatus(QPainter &p) {
   } else if (conditionalStatus == 13 || conditionalStatus == 14) {
     iconToDraw = leadIcon.scaled(iconSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
   } else {
-    p.restore();
-    return;
+    iconToDraw = chillModeIcon.scaled(iconSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
   }
   p.drawPixmap(QRect(cemWidget.center() - QPoint(iconToDraw.width() / 2, iconToDraw.height() / 2), iconToDraw.size()), iconToDraw);
 

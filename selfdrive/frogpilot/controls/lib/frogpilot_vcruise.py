@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.numpy_fast import clip
 from openpilot.common.realtime import DT_MDL
@@ -21,13 +22,11 @@ class FrogPilotVCruise:
     self.forcing_stop = False
     self.override_force_stop = False
     self.override_slc = False
-    self.speed_limit_changed = False
 
     self.force_stop_timer = 0
     self.mtsc_target = 0
     self.overridden_speed = 0
     self.override_force_stop_timer = 0
-    self.previous_speed_limit = 0
     self.slc_offset = 0
     self.slc_target = 0
     self.speed_limit_timer = 0
@@ -62,15 +61,12 @@ class FrogPilotVCruise:
     # Pfeiferj's Map Turn Speed Controller
     if frogpilot_toggles.map_turn_speed_controller and v_ego > CRUISING_SPEED and carControl.longActive:
       mtsc_active = self.mtsc_target < v_cruise
-      self.mtsc_target = clip(self.mtsc.target_speed(v_ego, carState.aEgo, frogpilot_toggles), CRUISING_SPEED, v_cruise)
+      mtsc_speed = ((TARGET_LAT_A * frogpilot_toggles.turn_aggressiveness) / (self.mtsc.get_map_curvature(v_ego) * frogpilot_toggles.curve_sensitivity))**0.5
+      self.mtsc_target = clip(mtsc_speed, CRUISING_SPEED, v_cruise)
 
-      curve_detected = (1 / self.frogpilot_planner.road_curvature)**0.5 < v_ego
-      if curve_detected and mtsc_active:
+      if self.frogpilot_planner.road_curvature_detected and mtsc_active:
         self.mtsc_target = self.frogpilot_planner.v_cruise
-      elif not curve_detected and frogpilot_toggles.mtsc_curvature_check:
-        self.mtsc_target = v_cruise
-
-      if self.mtsc_target == CRUISING_SPEED:
+      elif not self.frogpilot_planner.road_curvature_detected and frogpilot_toggles.mtsc_curvature_check:
         self.mtsc_target = v_cruise
     else:
       self.mtsc_target = v_cruise if v_cruise != V_CRUISE_UNSET else 0
@@ -78,37 +74,27 @@ class FrogPilotVCruise:
     # Pfeiferj's Speed Limit Controller
     if frogpilot_toggles.show_speed_limits or frogpilot_toggles.speed_limit_controller:
       self.slc.update(frogpilotCarState.dashboardSpeedLimit, controlsState.enabled, frogpilotNavigation.navigationSpeedLimit, v_cruise_cluster, v_ego, frogpilot_toggles)
-      unconfirmed_slc_target = self.slc.desired_speed_limit
+      desired_slc_target = self.slc.desired_speed_limit
 
-      if (frogpilot_toggles.speed_limit_changed_alert or frogpilot_toggles.speed_limit_confirmation) and self.slc_target != 0:
-        speed_limit_difference = unconfirmed_slc_target - self.previous_speed_limit
+      if self.slc.speed_limit_changed:
+        speed_limit_accepted = frogpilotCarControl.accelPressed and carControl.longActive or params_memory.get_bool("SpeedLimitAccepted")
+        speed_limit_denied = frogpilotCarControl.decelPressed and carControl.longActive or self.speed_limit_timer >= 30
 
-        if abs(speed_limit_difference) > 1:
-          speed_limit_accepted = frogpilotCarControl.accelPressed and carControl.longActive or params_memory.get_bool("SpeedLimitAccepted")
-          speed_limit_denied = frogpilotCarControl.decelPressed and carControl.longActive or self.speed_limit_timer >= 30
-
-          if speed_limit_accepted:
-            self.previous_speed_limit = unconfirmed_slc_target
-            self.slc_target = unconfirmed_slc_target
-            params_memory.remove("SpeedLimitAccepted")
-          elif speed_limit_denied:
-            self.previous_speed_limit = unconfirmed_slc_target
-          elif speed_limit_difference < 0 and not frogpilot_toggles.speed_limit_confirmation_lower:
-            self.previous_speed_limit = unconfirmed_slc_target
-            self.slc_target = unconfirmed_slc_target
-          elif speed_limit_difference > 0 and not frogpilot_toggles.speed_limit_confirmation_higher:
-            self.previous_speed_limit = unconfirmed_slc_target
-            self.slc_target = unconfirmed_slc_target
-          else:
-            self.speed_limit_timer += DT_MDL
-
-          self.speed_limit_changed = unconfirmed_slc_target != self.previous_speed_limit
+        if speed_limit_accepted:
+          self.slc_target = desired_slc_target
+          params_memory.remove("SpeedLimitAccepted")
+        elif desired_slc_target < self.slc_target and not frogpilot_toggles.speed_limit_confirmation_lower:
+          self.slc_target = desired_slc_target
+        elif desired_slc_target > self.slc_target and not frogpilot_toggles.speed_limit_confirmation_higher:
+          self.slc_target = desired_slc_target
         else:
-          self.speed_limit_changed = False
-          self.speed_limit_timer = 0
+          self.speed_limit_timer += DT_MDL
+
+        self.slc.speed_limit_changed = self.slc_target != desired_slc_target and not speed_limit_denied
+      elif self.slc_target == 0:
+        self.slc_target = desired_slc_target
       else:
-        self.previous_speed_limit = unconfirmed_slc_target
-        self.slc_target = unconfirmed_slc_target
+        self.speed_limit_timer = 0
 
       if frogpilot_toggles.speed_limit_controller:
         self.override_slc = self.overridden_speed > self.slc_target + self.slc_offset

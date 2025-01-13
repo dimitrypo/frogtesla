@@ -1,13 +1,16 @@
-from openpilot.selfdrive.frogpilot.frogpilot_utilities import MovingAverageCalculator
+#!/usr/bin/env python3
+from openpilot.common.filter_simple import FirstOrderFilter
+from openpilot.common.realtime import DT_MDL
+
 from openpilot.selfdrive.frogpilot.frogpilot_variables import CITY_SPEED_LIMIT, CRUISING_SPEED, THRESHOLD, params_memory
 
 class ConditionalExperimentalMode:
   def __init__(self, FrogPilotPlanner):
     self.frogpilot_planner = FrogPilotPlanner
 
-    self.curvature_mac = MovingAverageCalculator()
-    self.slow_lead_mac = MovingAverageCalculator()
-    self.stop_light_mac = MovingAverageCalculator()
+    self.curvature_filter = FirstOrderFilter(0, 1, DT_MDL)
+    self.slow_lead_filter = FirstOrderFilter(0, 1, DT_MDL)
+    self.stop_light_filter = FirstOrderFilter(0, 1, DT_MDL)
 
     self.curve_detected = False
     self.experimental_mode = False
@@ -24,8 +27,9 @@ class ConditionalExperimentalMode:
       self.experimental_mode = self.check_conditions(carState, frogpilotNavigation, modelData, self.frogpilot_planner.frogpilot_following.following_lead, v_ego, v_lead, frogpilot_toggles)
       params_memory.put_int("CEStatus", self.status_value if self.experimental_mode else 0)
     else:
-      self.experimental_mode = self.status_value in {2, 4, 6} or carState.standstill and self.experimental_mode
+      self.experimental_mode = self.status_value in {2, 4, 6} or carState.standstill and self.experimental_mode and self.frogpilot_planner.model_stopped
       self.stop_light_detected &= self.status_value not in {1, 2, 3, 4, 5, 6}
+      self.stop_light_filter.update(0)
 
   def check_conditions(self, carState, frogpilotNavigation, modelData, following_lead, v_ego, v_lead, frogpilot_toggles):
     below_speed = frogpilot_toggles.conditional_limit > v_ego >= 1 and not following_lead
@@ -69,13 +73,11 @@ class ConditionalExperimentalMode:
 
   def curve_detection(self, tracking_lead, v_ego, frogpilot_toggles):
     if v_ego > CRUISING_SPEED:
-      curve_detected = (1 / self.frogpilot_planner.road_curvature)**0.5 < v_ego
-      curve_active = (0.9 / self.frogpilot_planner.road_curvature)**0.5 < v_ego and self.curve_detected
+      curve_active = self.curve_detected and (0.9 / self.frogpilot_planner.road_curvature)**0.5 < v_ego
 
-      self.curvature_mac.add_data(curve_detected or curve_active)
-      self.curve_detected = self.curvature_mac.get_moving_average() >= THRESHOLD
+      self.curve_detected = self.curvature_filter.update(1 if self.frogpilot_planner.road_curvature_detected or curve_active else 0) >= THRESHOLD
     else:
-      self.curvature_mac.reset_data()
+      self.curvature_filter.update(0)
       self.curve_detected = False
 
   def slow_lead(self, tracking_lead, v_lead, frogpilot_toggles):
@@ -83,18 +85,16 @@ class ConditionalExperimentalMode:
       slower_lead = frogpilot_toggles.conditional_slower_lead and self.frogpilot_planner.frogpilot_following.slower_lead
       stopped_lead = frogpilot_toggles.conditional_stopped_lead and v_lead < 1
 
-      self.slow_lead_mac.add_data(slower_lead or stopped_lead)
-      self.slow_lead_detected = self.slow_lead_mac.get_moving_average() >= THRESHOLD
+      self.slow_lead_detected = self.slow_lead_filter.update(1 if slower_lead or stopped_lead else 0) >= THRESHOLD
     else:
-      self.slow_lead_mac.reset_data()
+      self.slow_lead_filter.update(0)
       self.slow_lead_detected = False
 
   def stop_sign_and_light(self, frogpilotCarState, tracking_lead, v_ego, frogpilot_toggles):
     if not (self.curve_detected or tracking_lead or frogpilotCarState.trafficModeActive):
       model_stopping = self.frogpilot_planner.model_length < v_ego * frogpilot_toggles.conditional_model_stop_time
 
-      self.stop_light_mac.add_data(self.frogpilot_planner.model_stopped or model_stopping)
-      self.stop_light_detected = self.stop_light_mac.get_moving_average() >= THRESHOLD
+      self.stop_light_detected = self.stop_light_filter.update(1 if self.frogpilot_planner.model_stopped or model_stopping else 0) >= THRESHOLD / 2
     else:
-      self.stop_light_mac.reset_data()
+      self.stop_light_filter.update(0)
       self.stop_light_detected = False

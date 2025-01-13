@@ -486,10 +486,6 @@ FrogPilotThemesPanel::FrogPilotThemesPanel(FrogPilotSettingsWindow *parent) : Fr
     if (FrogPilotParamManageControl *frogPilotManageToggle = qobject_cast<FrogPilotParamManageControl*>(themeToggle)) {
       QObject::connect(frogPilotManageToggle, &FrogPilotParamManageControl::manageButtonClicked, this, &FrogPilotThemesPanel::openParentToggle);
     }
-
-    QObject::connect(themeToggle, &AbstractControl::showDescriptionEvent, [this]() {
-      update();
-    });
   }
 
   QObject::connect(parent, &FrogPilotSettingsWindow::closeParentToggle, this, &FrogPilotThemesPanel::hideToggles);
@@ -590,6 +586,8 @@ void FrogPilotThemesPanel::updateState(const UIState &s) {
   manageWheelIconsBtn->setEnabledButtons(0, !themeDownloading);
   manageWheelIconsBtn->setEnabledButtons(1, s.scene.online && (!themeDownloading || wheelDownloading) && !cancellingDownload && !wheelsDownloaded && parked);
   manageWheelIconsBtn->setEnabledButtons(2, !themeDownloading);
+
+  parent->keepScreenOn = themeDownloading;
 }
 
 void FrogPilotThemesPanel::showToggles(const std::set<QString> &keys) {

@@ -95,10 +95,6 @@ FrogPilotSoundsPanel::FrogPilotSoundsPanel(FrogPilotSettingsWindow *parent) : Fr
     if (FrogPilotParamManageControl *frogPilotManageToggle = qobject_cast<FrogPilotParamManageControl*>(soundsToggle)) {
       QObject::connect(frogPilotManageToggle, &FrogPilotParamManageControl::manageButtonClicked, this, &FrogPilotSoundsPanel::openParentToggle);
     }
-
-    QObject::connect(soundsToggle, &AbstractControl::showDescriptionEvent, [this]() {
-      update();
-    });
   }
 
   for (const QString &key : alertVolumeControlKeys) {

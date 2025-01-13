@@ -1,4 +1,5 @@
 # PFEIFER - SLC - Modified by FrogAi for FrogPilot
+#!/usr/bin/env python3
 import json
 
 from openpilot.selfdrive.frogpilot.frogpilot_utilities import calculate_distance_to_point
@@ -7,6 +8,7 @@ from openpilot.selfdrive.frogpilot.frogpilot_variables import TO_RADIANS, params
 class SpeedLimitController:
   def __init__(self):
     self.experimental_mode = False
+    self.speed_limit_changed = False
 
     self.desired_speed_limit = 0
     self.map_speed_limit = 0
@@ -31,32 +33,37 @@ class SpeedLimitController:
       if abs(self.speed_limit - self.previous_speed_limit) > 1:
         params.put_float_nonblocking("PreviousSpeedLimit", self.speed_limit)
         self.previous_speed_limit = self.speed_limit
+        self.speed_limit_changed = True
       return self.speed_limit
     else:
+      self.speed_limit_changed = False
       return 0
 
   def update_map_speed_limit(self, v_ego, frogpilot_toggles):
+    position = json.loads(params_memory.get("LastGPSPosition") or "{}")
+    if not position:
+      self.map_speed_limit = 0
+      return
+
     self.map_speed_limit = params_memory.get_float("MapSpeedLimit")
 
-    next_map_speed_limit = json.loads(params_memory.get("NextMapSpeedLimit", "{}"))
+    next_map_speed_limit = json.loads(params_memory.get("NextMapSpeedLimit") or "{}")
     self.upcoming_speed_limit = next_map_speed_limit.get("speedlimit", 0)
-
     if self.upcoming_speed_limit > 1:
-      position = json.loads(params_memory.get("LastGPSPosition", "{}"))
-      latitude = position.get("latitude", 0)
-      longitude = position.get("longitude", 0)
+      current_latitude = position.get("latitude")
+      current_longitude = position.get("longitude")
 
-      next_lat = next_map_speed_limit.get("latitude", 0)
-      next_lon = next_map_speed_limit.get("longitude", 0)
+      upcoming_latitude = next_map_speed_limit.get("latitude")
+      upcoming_longitude = next_map_speed_limit.get("longitude")
 
-      distance = calculate_distance_to_point(latitude * TO_RADIANS, longitude * TO_RADIANS, next_lat * TO_RADIANS, next_lon * TO_RADIANS)
+      distance_to_upcoming = calculate_distance_to_point(current_latitude * TO_RADIANS, current_longitude * TO_RADIANS, upcoming_latitude * TO_RADIANS, upcoming_longitude * TO_RADIANS)
 
       if self.previous_speed_limit < self.upcoming_speed_limit:
         max_distance = frogpilot_toggles.map_speed_lookahead_higher * v_ego
       else:
         max_distance = frogpilot_toggles.map_speed_lookahead_lower * v_ego
 
-      if distance < max_distance:
+      if distance_to_upcoming < max_distance:
         self.map_speed_limit = self.upcoming_speed_limit
 
   def get_offset(self, speed_limit, frogpilot_toggles):

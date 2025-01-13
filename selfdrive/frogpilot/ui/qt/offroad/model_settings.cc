@@ -148,7 +148,6 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
 
             params_memory.putBool("CancelModelDownload", true);
           } else {
-            QStringList downloadableModels = availableModelNames;
             for (const QString &file : modelDir.entryList(QDir::Files)) {
               downloadableModels.removeAll(modelFileToNameMap.value(QFileInfo(file).baseName()));
             }
@@ -221,10 +220,6 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
     if (FrogPilotParamManageControl *frogPilotManageToggle = qobject_cast<FrogPilotParamManageControl*>(modelToggle)) {
       QObject::connect(frogPilotManageToggle, &FrogPilotParamManageControl::manageButtonClicked, this, &FrogPilotModelPanel::openParentToggle);
     }
-
-    QObject::connect(modelToggle, &AbstractControl::showDescriptionEvent, [this]() {
-      update();
-    });
   }
 
   QObject::connect(static_cast<ToggleControl*>(toggles["ModelRandomizer"]), &ToggleControl::toggleFlipped, [this](bool state) {
@@ -260,7 +255,7 @@ void FrogPilotModelPanel::showEvent(QShowEvent *event) {
     modelFileToNameMapProcessed.insert(availableModels[i], processModelName(availableModelNames[i]));
   }
 
-  QStringList downloadableModels = availableModelNames;
+  downloadableModels = availableModelNames;
   for (const QString &file : modelDir.entryList(QDir::Files)) {
     downloadableModels.removeAll(modelFileToNameMap.value(QFileInfo(file).baseName()));
   }
@@ -281,7 +276,9 @@ void FrogPilotModelPanel::showEvent(QShowEvent *event) {
 }
 
 void FrogPilotModelPanel::updateState(const UIState &s) {
-  if (!isVisible() || finalizingDownload) return;
+  if (!isVisible() || finalizingDownload) {
+    return;
+  }
 
   if (allModelsDownloading || modelDownloading) {
     QString progress = QString::fromStdString(params_memory.get("ModelDownloadProgress"));
@@ -327,6 +324,8 @@ void FrogPilotModelPanel::updateState(const UIState &s) {
   downloadModelBtn->setVisibleButton(1, !modelDownloading);
 
   started = s.scene.started;
+
+  parent->keepScreenOn = allModelsDownloading || modelDownloading;
 }
 
 void FrogPilotModelPanel::updateModelLabels() {

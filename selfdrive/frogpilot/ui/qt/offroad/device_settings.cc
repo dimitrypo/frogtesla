@@ -68,10 +68,6 @@ FrogPilotDevicePanel::FrogPilotDevicePanel(FrogPilotSettingsWindow *parent) : Fr
     if (FrogPilotParamManageControl *frogPilotManageToggle = qobject_cast<FrogPilotParamManageControl*>(deviceToggle)) {
       QObject::connect(frogPilotManageToggle, &FrogPilotParamManageControl::manageButtonClicked, this, &FrogPilotDevicePanel::openParentToggle);
     }
-
-    QObject::connect(deviceToggle, &AbstractControl::showDescriptionEvent, [this]() {
-      update();
-    });
   }
 
   static_cast<ParamControl*>(toggles["IncreaseThermalLimits"])->setConfirmation(true, false);
