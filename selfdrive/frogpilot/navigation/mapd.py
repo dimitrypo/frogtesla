@@ -55,6 +55,10 @@ def get_latest_version():
     try:
       with urllib.request.urlopen(url, timeout=5) as response:
         return json.loads(response.read().decode('utf-8'))['version']
+    except TimeoutError as error:
+      print(f"Timeout while fetching mapd version from {url}: {error}")
+    except URLError as error:
+      print(f"URLError encountered for {url}: {error}")
     except Exception as error:
       print(f"Error fetching mapd version from {url}: {error}")
       sentry.capture_exception(error)

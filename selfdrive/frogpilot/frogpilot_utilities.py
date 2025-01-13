@@ -12,6 +12,7 @@ import zipfile
 import openpilot.system.sentry as sentry
 
 from pathlib import Path
+from urllib.error import URLError
 
 from cereal import log
 from openpilot.common.numpy_fast import interp
@@ -46,6 +47,8 @@ def run_thread_with_lock(name, target, args=()):
       def wrapped_target(*t_args):
         try:
           target(*t_args)
+        except HTTPError as error:
+          print(f"HTTP error while accessing {api_url}: {error}")
         except Exception as error:
           print(f"Error in thread '{name}': {error}")
           sentry.capture_exception(error)
@@ -110,10 +113,13 @@ def flash_panda():
   HARDWARE.reset_internal_panda()
   params_memory.put_bool("FlashPanda", False)
 
-def is_url_pingable(url, timeout=10):
+def is_url_pingable(url, timeout=5):
   try:
     urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}), timeout=timeout)
     return True
+  except URLError as error:
+    print(f"URLError encountered for {url}: {error}")
+    return False
   except Exception as error:
     print(f"Failed to ping {url}: {error}")
     sentry.capture_exception(error)
