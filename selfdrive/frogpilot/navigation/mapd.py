@@ -65,8 +65,16 @@ def mapd_thread():
   while True:
     try:
       if not os.path.exists(MAPD_PATH):
+        print(f"{MAPD_PATH} not found. Downloading...")
         download()
         continue
+      else:
+        current_permissions = stat.S_IMODE(os.lstat(MAPD_PATH).st_mode)
+        desired_permissions = current_permissions | stat.S_IEXEC
+
+        if current_permissions != desired_permissions:
+          print(f"{MAPD_PATH} has the wrong permissions. Attempting to fix...")
+          os.chmod(MAPD_PATH, desired_permissions)
       if not os.path.exists(VERSION_PATH):
         download()
         continue
@@ -74,14 +82,16 @@ def mapd_thread():
         current_version = f.read()
         if is_url_pingable("https://github.com") or is_url_pingable("https://gitlab.com"):
           if current_version != get_latest_version():
+            print("New mapd version available. Downloading...")
             download()
             continue
 
       process = subprocess.Popen(MAPD_PATH)
       process.wait()
     except Exception as error:
-      print(error)
+      print(f"Error in mapd_thread: {error}")
       sentry.capture_exception(error)
+      time.sleep(60)
 
 def main():
   mapd_thread()
