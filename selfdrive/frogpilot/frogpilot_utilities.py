@@ -12,7 +12,7 @@ import zipfile
 import openpilot.system.sentry as sentry
 
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 from cereal import log
 from openpilot.common.numpy_fast import interp
@@ -117,6 +117,9 @@ def is_url_pingable(url, timeout=5):
   try:
     urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}), timeout=timeout)
     return True
+  except TimeoutError:
+    print(f"TimeoutError: The operation timed out for {url}")
+    return False
   except URLError as error:
     print(f"URLError encountered for {url}: {error}")
     return False

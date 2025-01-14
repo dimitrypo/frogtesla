@@ -377,8 +377,8 @@ class FrogPilotVariables:
         has_bsm = CP.enableBsm
         has_radar = not CP.radarUnavailable
         is_pid_car = CP.lateralTuning.which() == "pid"
-        kiBP = CP.longitudinalTuning.kiBP
-        kiV = CP.longitudinalTuning.kiV
+        kiBP = list(CP.longitudinalTuning.kiBP)
+        kiV = list(CP.longitudinalTuning.kiV)
         max_acceleration_enabled = CP.alternativeExperience & ALTERNATIVE_EXPERIENCE.RAISE_LONGITUDINAL_LIMITS_TO_ISO_MAX
         openpilot_longitudinal = CP.openpilotLongitudinalControl
         pcm_cruise = CP.pcmCruise
