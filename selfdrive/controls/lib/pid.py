@@ -66,7 +66,10 @@ class PIDController:
       self.i -= self.i_unwind_rate * float(np.sign(self.i))
     else:
       if not freeze_integrator:
-        self.i = self.i + error * self.k_i * self.i_rate
+        if frogpilot_toggles is not None and frogpilot_toggles.frogsgomoo_tweak and feedforward > 0:
+          self.i = self.i + error * interp(self.speed, frogpilot_toggles.kiBP, frogpilot_toggles.kiV) * self.i_rate
+        else:
+          self.i = self.i + error * self.k_i * self.i_rate
 
         # Clip i to prevent exceeding control limits
         control_no_i = self.p + self.d + self.f

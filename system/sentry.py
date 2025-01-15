@@ -100,6 +100,10 @@ def capture_fingerprint(candidate, params, blocked=False):
     sentry_sdk.flush()
 
 
+def capture_model(frogpilot_toggles):
+  sentry_sdk.capture_message(f"User using: {frogpilot_toggles.model_name} - Model Randomizer: {frogpilot_toggles.model_randomizer}", level='info')
+
+
 def capture_user(channel):
   sentry_sdk.capture_message(f"Logged user on: {channel}", level='info')
 

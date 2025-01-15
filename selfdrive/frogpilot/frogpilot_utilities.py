@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import http.client
 import json
 import math
 import numpy as np
@@ -115,10 +116,21 @@ def flash_panda():
 
 def is_url_pingable(url, timeout=5):
   try:
-    urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'}), timeout=timeout)
+    request = urllib.request.Request(
+      url,
+      headers={
+        'User-Agent': 'Mozilla/5.0 (compatible; Python urllib)',
+        'Accept': '*/*',
+        'Connection': 'keep-alive'
+      }
+    )
+    urllib.request.urlopen(request, timeout=timeout)
     return True
   except TimeoutError:
     print(f"TimeoutError: The operation timed out for {url}")
+    return False
+  except http.client.RemoteDisconnected:
+    print(f"RemoteDisconnected: The server closed the connection without responding for {url}")
     return False
   except URLError as error:
     print(f"URLError encountered for {url}: {error}")

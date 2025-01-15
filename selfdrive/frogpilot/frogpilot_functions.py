@@ -67,7 +67,7 @@ def cleanup_backups(directory, limit, success_message, fail_message, compressed=
 def backup_frogpilot(build_metadata):
   backup_path = Path("/data/backups")
   maximum_backups = 5
-  cleanup_backups(backup_path, maximum_backups, "Successfully cleaned up old FrogPilot backups", "Failed to cleanup old FrogPilot backups", True)
+  cleanup_backups(backup_path, maximum_backups, "Successfully cleaned up old FrogPilot backups", "Failed to cleanup old FrogPilot backups", compressed=True)
 
   _, _, free = shutil.disk_usage(backup_path)
   minimum_backup_size = params.get_int("MinimumBackupSize")
@@ -231,10 +231,10 @@ def setup_frogpilot(build_metadata):
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, destination)
 
+  run_cmd(["sudo", "mount", "-o", "remount,rw", "/"], "Successfully remounted the file system as read-write", "Failed to remount the file system")
   boot_logo_location = Path("/usr/comma/bg.jpg")
-  frogpilot_boot_logo = Path(BASEDIR) / "selfdrive/frogpilot/assets/other_images/frogpilot_boot_logo.png"
+  frogpilot_boot_logo = Path(__file__).parent / "assets/other_images/frogpilot_boot_logo.png"
   if not filecmp.cmp(frogpilot_boot_logo, boot_logo_location, shallow=False):
-    run_cmd(["sudo", "mount", "-o", "remount,rw", "/usr/comma"], "/usr/comma remounted as read-write", "Failed to remount /usr/comma")
     run_cmd(["sudo", "cp", frogpilot_boot_logo, boot_logo_location], "Successfully replaced boot logo", "Failed to replace boot logo")
 
   if build_metadata.channel == "FrogPilot-Development":
@@ -242,7 +242,7 @@ def setup_frogpilot(build_metadata):
 
 def uninstall_frogpilot():
   boot_logo_location = Path("/usr/comma/bg.jpg")
-  stock_boot_logo = Path(BASEDIR) / "selfdrive/frogpilot/assets/other_images/original_bg.jpg"
+  stock_boot_logo = Path(__file__).parent / "assets/other_images/original_bg.jpg"
   run_cmd(["sudo", "cp", stock_boot_logo, boot_logo_location], "Successfully restored the stock boot logo", "Failed to restore the stock boot logo")
 
   HARDWARE.uninstall()

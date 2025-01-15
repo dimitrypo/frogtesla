@@ -94,7 +94,7 @@ class ConditionalExperimentalMode:
     if not (self.curve_detected or tracking_lead or frogpilotCarState.trafficModeActive):
       model_stopping = self.frogpilot_planner.model_length < v_ego * frogpilot_toggles.conditional_model_stop_time
 
-      self.stop_light_detected = self.stop_light_filter.update(1 if self.frogpilot_planner.model_stopped or model_stopping else 0) >= THRESHOLD / 2
+      self.stop_light_detected = self.stop_light_filter.update(1 if self.frogpilot_planner.model_stopped or model_stopping else 0) >= THRESHOLD**2
     else:
       self.stop_light_filter.update(0)
       self.stop_light_detected = False
