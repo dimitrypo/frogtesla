@@ -54,7 +54,7 @@ class ModelState:
   prev_desire: np.ndarray  # for tracking the rising edge of the pulse
   model: ModelRunner
 
-  def __init__(self, context: CLContext, model: str, model_version: str, use_desired_curvature: bool):
+  def __init__(self, context: CLContext, model: str, model_version: str):
     # FrogPilot variables
     model_path = MODELS_PATH / f'{model}.thneed'
     if model != DEFAULT_MODEL and model_path.exists():
@@ -72,17 +72,20 @@ class ModelState:
     self.desire_20Hz =  np.zeros((ModelConstants.FULL_HISTORY_BUFFER_LEN + 1, ModelConstants.DESIRE_LEN), dtype=np.float32)
     self.prev_desired_curv_20hz = np.zeros((ModelConstants.FULL_HISTORY_BUFFER_LEN + 1, ModelConstants.PREV_DESIRED_CURV_LEN), dtype=np.float32)
 
+    with open(metadata_path, 'rb') as f:
+      model_metadata = pickle.load(f)
+
+    input_shapes = model_metadata.get('input_shapes')
+    self.use_desired_curvature = 'lateral_control_params' in input_shapes and 'prev_desired_curv' in input_shapes
+
     # img buffers are managed in openCL transform code
     self.inputs = {
       'desire': np.zeros(ModelConstants.DESIRE_LEN * (ModelConstants.HISTORY_BUFFER_LEN+1), dtype=np.float32),
       'traffic_convention': np.zeros(ModelConstants.TRAFFIC_CONVENTION_LEN, dtype=np.float32),
-      **({'lateral_control_params': np.zeros(ModelConstants.LATERAL_CONTROL_PARAMS_LEN, dtype=np.float32)} if use_desired_curvature else {}),
-      **({'prev_desired_curv': np.zeros(ModelConstants.PREV_DESIRED_CURV_LEN * (ModelConstants.HISTORY_BUFFER_LEN+1), dtype=np.float32)} if use_desired_curvature else {}),
+      **({'lateral_control_params': np.zeros(ModelConstants.LATERAL_CONTROL_PARAMS_LEN, dtype=np.float32)} if self.use_desired_curvature else {}),
+      **({'prev_desired_curv': np.zeros(ModelConstants.PREV_DESIRED_CURV_LEN * (ModelConstants.HISTORY_BUFFER_LEN+1), dtype=np.float32)} if self.use_desired_curvature else {}),
       'features_buffer': np.zeros(ModelConstants.HISTORY_BUFFER_LEN * ModelConstants.FEATURE_LEN, dtype=np.float32),
     }
-
-    with open(metadata_path, 'rb') as f:
-      model_metadata = pickle.load(f)
 
     self.output_slices = model_metadata['output_slices']
     net_output_size = model_metadata['output_shapes']['outputs'][1]
@@ -113,7 +116,7 @@ class ModelState:
     self.inputs['desire'][:] = self.desire_20Hz.reshape((25,4,-1)).max(axis=1).flatten()
 
     self.inputs['traffic_convention'][:] = inputs['traffic_convention']
-    if use_desired_curvature:
+    if self.use_desired_curvature:
       self.inputs['lateral_control_params'][:] = inputs['lateral_control_params']
 
     self.model.setInputBuffer("input_imgs", self.frame.prepare(buf, transform.flatten(), self.model.getCLBuffer("input_imgs")))
@@ -128,13 +131,13 @@ class ModelState:
     self.full_features_20Hz[:-1] = self.full_features_20Hz[1:]
     self.full_features_20Hz[-1] = outputs['hidden_state'][0, :]
 
-    if use_desired_curvature:
+    if self.use_desired_curvature:
       self.prev_desired_curv_20hz[:-1] = self.prev_desired_curv_20hz[1:]
       self.prev_desired_curv_20hz[-1] = outputs['desired_curvature'][0, :]
 
     idxs = np.arange(-4,-100,-4)[::-1]
     self.inputs['features_buffer'][:] = self.full_features_20Hz[idxs].flatten()
-    if use_desired_curvature:
+    if self.use_desired_curvature:
       # TODO model only uses last value now, once that changes we need to input strided action history buffer
       self.inputs['prev_desired_curv'][-ModelConstants.PREV_DESIRED_CURV_LEN:] = 0. * self.prev_desired_curv_20hz[-4, :]
     return outputs
@@ -155,13 +158,12 @@ def main(demo=False):
   # FrogPilot variables
   frogpilot_toggles = get_frogpilot_toggles()
 
-  model = frogpilot_toggles.model
+  model_name = frogpilot_toggles.model
   model_version = frogpilot_toggles.model_version
 
-  clip_curves = frogpilot_toggles.clipped_curvature_model
-  use_desired_curvature = frogpilot_toggles.desired_curvature_model
+  planner_curves = frogpilot_toggles.planner_curvature_model
 
-  model = ModelState(cl_context, model, model_version, use_desired_curvature)
+  model = ModelState(cl_context, model_name, model_version)
   cloudlog.warning("models loaded, modeld starting")
 
   # visionipc clients
@@ -258,7 +260,7 @@ def main(demo=False):
     is_rhd = sm["driverMonitoringState"].isRHD
     frame_id = sm["roadCameraState"].frameId
     v_ego = max(sm["carState"].vEgo, 0.)
-    if use_desired_curvature:
+    if model.use_desired_curvature:
       lateral_control_params = np.array([v_ego, steer_delay], dtype=np.float32)
     if sm.updated["liveCalibration"] and sm.seen['roadCameraState'] and sm.seen['deviceState']:
       device_from_calib_euler = np.array(sm["liveCalibration"].rpyCalib, dtype=np.float32)
@@ -290,7 +292,7 @@ def main(demo=False):
     inputs:dict[str, np.ndarray] = {
       'desire': vec_desire,
       'traffic_convention': traffic_convention,
-      **({'lateral_control_params': lateral_control_params} if use_desired_curvature else {}),
+      **({'lateral_control_params': lateral_control_params} if model.use_desired_curvature else {}),
       }
 
     mt1 = time.perf_counter()
@@ -305,7 +307,7 @@ def main(demo=False):
       fill_model_msg(drivingdata_send, modelv2_send, model_output, v_ego, steer_delay,
                      publish_state, meta_main.frame_id, meta_extra.frame_id, frame_id,
                      frame_drop_ratio, meta_main.timestamp_eof, model_execution_time, live_calib_seen,
-                     clip_curves)
+                     planner_curves)
 
       desire_state = modelv2_send.modelV2.meta.desireState
       l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]
