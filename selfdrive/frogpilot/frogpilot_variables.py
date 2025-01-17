@@ -32,6 +32,7 @@ THRESHOLD = 0.63                                        # Requires the condition
 TO_RADIANS = math.pi / 180                              # Conversion factor from degrees to radians
 
 ACTIVE_THEME_PATH = Path(__file__).parent / "assets/active_theme"
+METADATAS_PATH = Path(__file__).parent / "assets/model_metadata"
 MODELS_PATH = Path("/data/models")
 RANDOM_EVENTS_PATH = Path(__file__).parent / "assets/random_events"
 THEME_SAVE_PATH = Path("/data/themes")
@@ -251,7 +252,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int]] = [
   ("SearchInput", "0", 0),
   ("SetSpeedLimit", "0", 2),
   ("SetSpeedOffset", "0", 2),
-  ("ShowCEMStatus", "1", 3),
+  ("ShowCEMStatus", "1", 2),
   ("ShowCPU", "1", 3),
   ("ShowGPU", "0", 3),
   ("ShowIP", "0", 3),
@@ -574,8 +575,8 @@ class FrogPilotVariables:
     toggle.experimental_mode_via_tap = toggle.experimental_mode_via_press and (params.get_bool("ExperimentalModeViaTap") if tuning_level >= level["ExperimentalModeViaTap"] else default.get_bool("ExperimentalModeViaTap"))
 
     toggle.frogsgomoo_tweak = openpilot_longitudinal and car_make == "toyota" and (params.get_bool("FrogsGoMoosTweak") if tuning_level >= level["FrogsGoMoosTweak"] else default.get_bool("FrogsGoMoosTweak"))
-    toggle.kiBP = [0., CRUISING_SPEED, CITY_SPEED_LIMIT] if toggle.frogsgomoo_tweak else kiBP
-    toggle.kiV = [0.5, 0.25, 0.] if toggle.frogsgomoo_tweak else kiV
+    toggle.kiBP = [0.] if toggle.frogsgomoo_tweak else kiBP
+    toggle.kiV = [0.25] if toggle.frogsgomoo_tweak else kiV
     toggle.stoppingDecelRate = 0.01 if toggle.frogsgomoo_tweak else stoppingDecelRate
     toggle.vEgoStopping = 0.5 if toggle.frogsgomoo_tweak else vEgoStopping
     toggle.vEgoStarting = 0.1 if toggle.frogsgomoo_tweak else vEgoStarting

@@ -312,7 +312,7 @@ class ThemeManager:
               assets["themes"][theme_name].add("sounds")
 
       return {**assets, "themes": {k: list(v) for k, v in assets["themes"].items()}}
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException as error:
       handle_request_error(f"Failed to fetch theme sizes from {'GitHub' if 'github' in repo_url else 'GitLab'}: {error}", None, None, None, None)
       return {}
 

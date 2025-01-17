@@ -25,7 +25,7 @@ from openpilot.selfdrive.classic_modeld.fill_model_msg import fill_model_msg, fi
 from openpilot.selfdrive.classic_modeld.constants import ModelConstants
 from openpilot.selfdrive.classic_modeld.models.commonmodel_pyx import ModelFrame, CLContext
 
-from openpilot.selfdrive.frogpilot.frogpilot_variables import DEFAULT_CLASSIC_MODEL, MODELS_PATH, get_frogpilot_toggles
+from openpilot.selfdrive.frogpilot.frogpilot_variables import DEFAULT_CLASSIC_MODEL, METADATAS_PATH, MODELS_PATH, get_frogpilot_toggles
 
 PROCESS_NAME = "selfdrive.classic_modeld.classic_modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
@@ -33,8 +33,6 @@ SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
 MODEL_PATHS = {
   ModelRunner.THNEED: Path(__file__).parent / 'models/supercombo.thneed',
   ModelRunner.ONNX: Path(__file__).parent / 'models/supercombo.onnx'}
-
-METADATA_PATH = Path(__file__).parent / 'models/supercombo_metadata.pkl'
 
 class FrameMeta:
   frame_id: int = 0
@@ -59,16 +57,11 @@ class ModelState:
     if model != DEFAULT_CLASSIC_MODEL and model_path.exists():
       MODEL_PATHS[ModelRunner.THNEED] = model_path
 
-    metadata_path = METADATA_PATH
-    desired_metadata_path = MODELS_PATH / f'supercombo_metadata_{model_version}.pkl'
-    if model != DEFAULT_CLASSIC_MODEL and desired_metadata_path.exists():
-      metadata_path = desired_metadata_path
-
     self.frame = ModelFrame(context)
     self.wide_frame = ModelFrame(context)
     self.prev_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
 
-    with open(metadata_path, 'rb') as f:
+    with open(METADATAS_PATH / f'supercombo_metadata_{model_version}.pkl', 'rb') as f:
       model_metadata = pickle.load(f)
 
     input_shapes = model_metadata.get('input_shapes')

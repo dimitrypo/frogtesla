@@ -65,12 +65,12 @@ void FrogPilotSettingsWindow::createPanelButtons(FrogPilotListWidget *list) {
   };
 
   std::vector<std::tuple<QString, QString, QString>> panelInfo = {
-    {tr("Alerts and Sounds"), tr("Manage FrogPilot's alerts and notifications."), "../frogpilot/assets/toggle_icons/icon_sound.png"},
-    {tr("Driving Controls"), tr("Adjust features that affect acceleration, braking, and steering."), "../frogpilot/assets/toggle_icons/icon_steering.png"},
-    {tr("Navigation"), tr("Download map data and configure 'Navigate On openpilot (NOO)'."), "../frogpilot/assets/toggle_icons/icon_map.png"},
-    {tr("System Management"), tr("Access tools, utilities, and device controls to maintain and troubleshoot FrogPilot."), "../frogpilot/assets/toggle_icons/icon_system.png"},
-    {tr("Theme and Appearance"), tr("Customize the openpilot theme, UI appearance, and on-road widgets."), "../frogpilot/assets/toggle_icons/icon_display.png"},
-    {tr("Vehicle Controls"), tr("Configure vehicle-specific settings for supported makes and models."), "../frogpilot/assets/toggle_icons/icon_vehicle.png"}
+    {tr("Alerts and Sounds"), tr("Manage FrogPilot's alerts and sounds."), "../frogpilot/assets/toggle_icons/icon_sound.png"},
+    {tr("Driving Controls"), tr("Manage FrogPilot's features that affect acceleration, braking, and steering."), "../frogpilot/assets/toggle_icons/icon_steering.png"},
+    {tr("Navigation"), tr("Manage map data to be used with 'Curve Speed Control' and 'Speed Limit Controller' and setup 'Navigate On openpilot (NOO)' without a comma prime subscription."), "../frogpilot/assets/toggle_icons/icon_map.png"},
+    {tr("System Management"), tr("Manage the device's internal settings along with other tools and utilities to maintain and troubleshoot FrogPilot."), "../frogpilot/assets/toggle_icons/icon_system.png"},
+    {tr("Theme and Appearance"), tr("Manage openpilot's theme and onroad widgets."), "../frogpilot/assets/toggle_icons/icon_display.png"},
+    {tr("Vehicle Controls"), tr("Manage vehicle-specific settings."), "../frogpilot/assets/toggle_icons/icon_vehicle.png"}
   };
 
   for (size_t i = 0; i < panelInfo.size(); ++i) {
@@ -126,10 +126,10 @@ FrogPilotSettingsWindow::FrogPilotSettingsWindow(SettingsWindow *parent) : QFram
 
   std::vector<QString> togglePresets{tr("Minimal"), tr("Standard"), tr("Advanced"), tr("Developer")};
   ButtonParamControl *togglePreset = new ButtonParamControl("TuningLevel", tr("Tuning Level"),
-                                     tr("Select a tuning level that suits your needs:\n\n"
+                                     tr("Select a tuning level that suits your preferences:\n\n"
                                      "Minimal - Ideal for those who prefer simplicity or ease of use\n"
                                      "Standard - Recommended for most users for a balanced experience\n"
-                                     "Advanced - Unlocks some fine tuning controls for more experienced users\n"
+                                     "Advanced - Unlocks fine-tuning controls for more experienced users\n"
                                      "Developer - Unlocks highly customizable settings for seasoned enthusiasts"),
                                      "../frogpilot/assets/toggle_icons/icon_customization.png",
                                      togglePresets);

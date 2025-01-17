@@ -141,7 +141,7 @@ class LongControl:
     self.pid.reset()
     self.v_pid = v_pid
 
-  def update_old_long(self, active, CS, long_plan, accel_limits, t_since_plan):
+  def update_old_long(self, active, CS, long_plan, accel_limits, t_since_plan, frogpilot_toggles):
     """Update longitudinal control. This updates the state machine and runs a PID loop"""
     # Interp control trajectory
     speeds = long_plan.speeds
@@ -195,7 +195,8 @@ class LongControl:
       error_deadzone = apply_deadzone(error, deadzone)
       output_accel = self.pid.update(error_deadzone, speed=CS.vEgo,
                                      feedforward=a_target,
-                                     freeze_integrator=freeze_integrator)
+                                     freeze_integrator=freeze_integrator,
+                                     frogpilot_toggles=frogpilot_toggles)
 
     self.last_output_accel = clip(output_accel, accel_limits[0], accel_limits[1])
 
