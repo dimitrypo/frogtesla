@@ -97,11 +97,6 @@ class LongControl:
     self.v_pid = 0.0
     self.last_output_accel = 0.0
 
-    # FrogPilot variables
-    self.CP = CP
-
-    self.updated_pid = False
-
   def reset(self):
     self.pid.reset()
 

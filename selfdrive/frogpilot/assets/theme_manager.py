@@ -395,7 +395,7 @@ class ThemeManager:
       return
 
     assets = self.fetch_assets(repo_url)
-    if not assets["themes"] and not assets["wheels"]:
+    if not assets:
       return
 
     downloadable_colors = []

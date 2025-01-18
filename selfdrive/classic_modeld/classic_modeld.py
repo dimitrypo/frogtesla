@@ -25,7 +25,7 @@ from openpilot.selfdrive.classic_modeld.fill_model_msg import fill_model_msg, fi
 from openpilot.selfdrive.classic_modeld.constants import ModelConstants
 from openpilot.selfdrive.classic_modeld.models.commonmodel_pyx import ModelFrame, CLContext
 
-from openpilot.selfdrive.frogpilot.frogpilot_variables import DEFAULT_CLASSIC_MODEL, METADATAS_PATH, MODELS_PATH, get_frogpilot_toggles
+from openpilot.selfdrive.frogpilot.frogpilot_variables import METADATAS_PATH, MODELS_PATH, get_frogpilot_toggles
 
 PROCESS_NAME = "selfdrive.classic_modeld.classic_modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
@@ -53,13 +53,7 @@ class ModelState:
 
   def __init__(self, context: CLContext, model: str, model_version: str):
     # FrogPilot variables
-    model_path = MODELS_PATH / f'{model}.thneed'
-    if model != DEFAULT_CLASSIC_MODEL and model_path.exists():
-      MODEL_PATHS[ModelRunner.THNEED] = model_path
-
-    self.frame = ModelFrame(context)
-    self.wide_frame = ModelFrame(context)
-    self.prev_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
+    MODEL_PATHS[ModelRunner.THNEED] = MODELS_PATH / f'{model}.thneed'
 
     with open(METADATAS_PATH / f'supercombo_metadata_{model_version}.pkl', 'rb') as f:
       model_metadata = pickle.load(f)
@@ -67,6 +61,10 @@ class ModelState:
     input_shapes = model_metadata.get('input_shapes')
     self.navigation = 'nav_features' in input_shapes and 'nav_instructions' in input_shapes
     self.radarless = 'radar_tracks' in input_shapes
+
+    self.frame = ModelFrame(context)
+    self.wide_frame = ModelFrame(context)
+    self.prev_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
 
     self.inputs = {
       'desire': np.zeros(ModelConstants.DESIRE_LEN * (ModelConstants.HISTORY_BUFFER_LEN+1), dtype=np.float32),

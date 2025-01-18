@@ -67,7 +67,7 @@ class PIDController:
       self.i -= self.i_unwind_rate * float(np.sign(self.i))
     else:
       if not freeze_integrator:
-        if self.longitudinal_pid and frogpilot_toggles.frogsgomoo_tweak and feedforward > 0.25:
+        if self.longitudinal_pid and frogpilot_toggles.frogsgomoo_tweak:
           self.i = self.i + error * interp(self.speed, frogpilot_toggles.kiBP, frogpilot_toggles.kiV) * self.i_rate
         else:
           self.i = self.i + error * self.k_i * self.i_rate
