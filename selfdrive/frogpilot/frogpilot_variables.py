@@ -626,15 +626,15 @@ class FrogPilotVariables:
       else:
         toggle.model = params.get("Model", encoding='utf-8') if tuning_level >= level["Model"] else default.get("Model", encoding='utf-8')
         if toggle.model in toggle.available_models.split(","):
-          toggle.model_name = params.get("ModelName", encoding='utf-8') if tuning_level >= level["ModelName"] else default.get("ModelName", encoding='utf-8')
+          toggle.model_name = toggle.available_model_names.split(",")[toggle.available_models.split(",").index(toggle.model)]
           toggle.model_version = toggle.model_versions.split(",")[toggle.available_models.split(",").index(toggle.model)]
         else:
           toggle.model = default.get("Model", encoding='utf-8')
-          toggle.model_name = default.get("ModelName", encoding='utf-8')
+          toggle.model_name = toggle.available_model_names.split(",")[toggle.available_models.split(",").index(toggle.model)]
           toggle.model_version = default.get("ModelVersion", encoding='utf-8')
     else:
       toggle.model = default.get("Model", encoding='utf-8')
-      toggle.model_name = default.get("ModelName", encoding='utf-8')
+      toggle.model_name = toggle.available_model_names.split(",")[toggle.available_models.split(",").index(toggle.model)]
       toggle.model_version = default.get("ModelVersion", encoding='utf-8')
     toggle.classic_model = toggle.model_version in {"v1", "v2", "v3", "v4"}
     toggle.planner_curvature_model = toggle.model_version not in {"v1", "v2", "v3", "v4", "v5"}
