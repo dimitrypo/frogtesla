@@ -615,7 +615,7 @@ class FrogPilotVariables:
     toggle.model_versions = params.get("ModelVersions", encoding='utf-8') or ""
     downloaded_models = [model for model in toggle.available_models.split(",") if (MODELS_PATH / f"{model}.thneed").exists()]
     toggle.model_randomizer = downloaded_models and (params.get_bool("ModelRandomizer") if tuning_level >= level["ModelRandomizer"] else default.get_bool("ModelRandomizer"))
-    if toggle.available_models and downloaded_models and toggle.model_versions:
+    if toggle.available_models and toggle.available_model_names and downloaded_models and toggle.model_versions:
       if toggle.model_randomizer:
         if not started:
           blacklisted_models = (params.get("BlacklistedModels", encoding='utf-8') or "").split(",")
@@ -633,9 +633,9 @@ class FrogPilotVariables:
           toggle.model_name = toggle.available_model_names.split(",")[toggle.available_models.split(",").index(toggle.model)]
           toggle.model_version = default.get("ModelVersion", encoding='utf-8')
     else:
-      toggle.model = default.get("Model", encoding='utf-8')
-      toggle.model_name = toggle.available_model_names.split(",")[toggle.available_models.split(",").index(toggle.model)]
-      toggle.model_version = default.get("ModelVersion", encoding='utf-8')
+      toggle.model = DEFAULT_MODEL
+      toggle.model_name = DEFAULT_MODEL_NAME
+      toggle.model_version = DEFAULT_MODEL_VERSION
     toggle.classic_model = toggle.model_version in {"v1", "v2", "v3", "v4"}
     toggle.planner_curvature_model = toggle.model_version not in {"v1", "v2", "v3", "v4", "v5"}
     toggle.radarless_model = toggle.model_version in {"v3"}
