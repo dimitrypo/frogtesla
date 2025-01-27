@@ -47,6 +47,7 @@ def download():
   ]
 
   os.makedirs(os.path.dirname(MAPD_PATH), exist_ok=True)
+  os.chmod(os.path.dirname(MAPD_PATH), 0o755)
 
   for url in urls:
     try:

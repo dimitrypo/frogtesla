@@ -120,7 +120,7 @@ def frogpilot_thread():
         run_thread_with_lock("lock_doors", lock_doors, (frogpilot_toggles.lock_doors_timer, sm))
     elif started and not started_previously:
       sentry.capture_fingerprint(frogpilot_toggles, params, frogpilot_tracking.params_tracking)
-      sentry.capture_model(frogpilot_toggles)
+      sentry.capture_model(frogpilot_toggles.model_name)
       sentry.capture_user(frogpilot_variables.short_branch)
 
       radarless_model = frogpilot_toggles.radarless_model
