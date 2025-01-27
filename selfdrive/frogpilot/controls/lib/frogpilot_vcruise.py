@@ -7,6 +7,7 @@ from openpilot.selfdrive.controls.controlsd import ButtonType
 from openpilot.selfdrive.controls.lib.drive_helpers import V_CRUISE_UNSET
 
 from openpilot.selfdrive.frogpilot.controls.lib.map_turn_speed_controller import MapTurnSpeedController
+from openpilot.selfdrive.frogpilot.controls.lib.smart_turn_speed_controller import SmartTurnSpeedController
 from openpilot.selfdrive.frogpilot.controls.lib.speed_limit_controller import SpeedLimitController
 from openpilot.selfdrive.frogpilot.frogpilot_variables import CRUISING_SPEED, PLANNER_TIME, params_memory
 
@@ -18,6 +19,7 @@ class FrogPilotVCruise:
 
     self.mtsc = MapTurnSpeedController()
     self.slc = SpeedLimitController()
+    self.stsc = SmartTurnSpeedController(self)
 
     self.forcing_stop = False
     self.override_force_stop = False
@@ -57,6 +59,9 @@ class FrogPilotVCruise:
 
     v_ego_cluster = max(carState.vEgoCluster, v_ego)
     v_ego_diff = v_ego_cluster - v_ego
+
+    # FrogsGoMoo's Smart Turn Speed Controller
+    self.stsc.update(carControl, v_cruise, round(v_ego, 2))
 
     # Pfeiferj's Map Turn Speed Controller
     if frogpilot_toggles.map_turn_speed_controller and v_ego > CRUISING_SPEED and carControl.longActive:
@@ -120,7 +125,7 @@ class FrogPilotVCruise:
       self.slc_target = 0
 
     # Pfeiferj's Vision Turn Controller
-    if frogpilot_toggles.vision_turn_controller and v_ego > CRUISING_SPEED and carControl.longActive:
+    if frogpilot_toggles.vision_turn_speed_controller and v_ego > CRUISING_SPEED and carControl.longActive and self.frogpilot_planner.road_curvature_detected:
       self.vtsc_target = ((TARGET_LAT_A * frogpilot_toggles.turn_aggressiveness) / (self.frogpilot_planner.road_curvature * frogpilot_toggles.curve_sensitivity))**0.5
       self.vtsc_target = clip(self.vtsc_target, CRUISING_SPEED, v_cruise)
     else:
@@ -149,7 +154,7 @@ class FrogPilotVCruise:
         targets = [self.mtsc_target, self.vtsc_target]
       v_cruise = float(min([target if target > CRUISING_SPEED else v_cruise for target in targets]))
 
-    self.mtsc_target += v_cruise_diff
-    self.vtsc_target += v_cruise_diff
+    self.mtsc_target = clip(self.mtsc_target, self.mtsc_target + v_cruise_diff, v_cruise)
+    self.vtsc_target = clip(self.vtsc_target, self.mtsc_target + v_cruise_diff, v_cruise)
 
     return v_cruise

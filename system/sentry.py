@@ -65,18 +65,16 @@ def capture_exception(*args, **kwargs) -> None:
   threading.Thread(target=capture_exception_thread, daemon=True).start()
 
 
-def capture_fingerprint(candidate, params, blocked_user=False):
+def capture_fingerprint(frogpilot_toggles, params, params_tracking):
   def capture_fingerprint_thread():
     while not system_time_valid():
       time.sleep(1)
 
-    if blocked_user:
+    if frogpilot_toggles.block_user:
       with sentry_sdk.push_scope() as scope:
         sentry_sdk.capture_message("Blocked user from using the development branch", level='warning')
         sentry_sdk.flush()
         return
-
-    params_tracking = Params("/persist/tracking")
 
     param_types = {
       "FrogPilot Controls": ParamKeyType.FROGPILOT_CONTROLS,
@@ -91,7 +89,7 @@ def capture_fingerprint(candidate, params, blocked_user=False):
       for label, key_type in param_types.items():
         if params.get_key_type(key) & key_type:
           if key_type == ParamKeyType.FROGPILOT_TRACKING:
-            value = params_tracking.get_int(key)
+            value = f"{params_tracking.get_int(key):,}"
           else:
             if isinstance(params.get(key), bytes):
               value = params.get(key, encoding='utf-8')
@@ -102,18 +100,11 @@ def capture_fingerprint(candidate, params, blocked_user=False):
             value = value.rstrip("0").rstrip(".")
           matched_params[label][key.decode('utf-8')] = value
 
-    for label, key_values in matched_params.items():
-      if label == "FrogPilot Tracking":
-        matched_params[label] = {key: f"{value:,}" for key, value in key_values.items()}
-      else:
-        matched_params[label] = {key: f"{value:}" for key, value in key_values.items()}
-
     with sentry_sdk.push_scope() as scope:
       for label, key_values in matched_params.items():
         scope.set_context(label, key_values)
 
-      scope.fingerprint = [params.get("DongleId", encoding='utf-8'), candidate]
-      sentry_sdk.capture_message(f"Fingerprinted {candidate}", level='info')
+      sentry_sdk.capture_message(f"Fingerprinted {frogpilot_toggles.car_model}", level='info')
       sentry_sdk.flush()
 
   threading.Thread(target=capture_fingerprint_thread, daemon=True).start()
@@ -124,9 +115,8 @@ def capture_model(frogpilot_toggles):
     while not system_time_valid():
       time.sleep(1)
 
-    with sentry_sdk.push_scope() as scope:
-      sentry_sdk.capture_message(f"User using: {frogpilot_toggles.model_name}", level='info')
-      sentry_sdk.flush()
+    sentry_sdk.capture_message(f"User using: {frogpilot_toggles.model_name}", level='info')
+    sentry_sdk.flush()
 
   threading.Thread(target=capture_model_thread, daemon=True).start()
 
@@ -136,73 +126,10 @@ def capture_user(channel):
     while not system_time_valid():
       time.sleep(1)
 
-    with sentry_sdk.push_scope() as scope:
-      sentry_sdk.capture_message(f"Logged user on: {channel}", level='info')
-      sentry_sdk.flush()
-
-  threading.Thread(target=capture_user_thread, daemon=True).start()
-
-
-def capture_fingerprint(candidate, params, blocked=False):
-  while not system_time_valid():
-    time.sleep(1)
-
-  params_tracking = Params("/persist/tracking")
-
-  param_types = {
-    "FrogPilot Controls": ParamKeyType.FROGPILOT_CONTROLS,
-    "FrogPilot Vehicles": ParamKeyType.FROGPILOT_VEHICLES,
-    "FrogPilot Visuals": ParamKeyType.FROGPILOT_VISUALS,
-    "FrogPilot Other": ParamKeyType.FROGPILOT_OTHER,
-    "FrogPilot Tracking": ParamKeyType.FROGPILOT_TRACKING,
-  }
-
-  matched_params = {label: {} for label in param_types}
-  for key in params.all_keys():
-    for label, key_type in param_types.items():
-      if params.get_key_type(key) & key_type:
-        if key_type == ParamKeyType.FROGPILOT_TRACKING:
-          value = params_tracking.get_int(key)
-        else:
-          if isinstance(params.get(key), bytes):
-            value = params.get(key, encoding='utf-8')
-          else:
-            value = params.get(key) or "0"
-
-        if isinstance(value, str) and "." in value:
-          value = value.rstrip("0").rstrip(".")
-        matched_params[label][key.decode('utf-8')] = value
-
-  for label, key_values in matched_params.items():
-    if label == "FrogPilot Tracking":
-      matched_params[label] = {key: f"{value:,}" for key, value in key_values.items()}
-    else:
-      matched_params[label] = {key: f"{value:}" for key, value in key_values.items()}
-
-  with sentry_sdk.push_scope() as scope:
-    for label, key_values in matched_params.items():
-      scope.set_context(label, key_values)
-
-    scope.fingerprint = [params.get("DongleId", encoding='utf-8'), candidate]
-
-    if blocked:
-      sentry_sdk.capture_message("Blocked user from using the development branch", level='warning')
-    else:
-      sentry_sdk.capture_message(f"Fingerprinted {candidate}", level='info')
-
-    params.put_bool("FingerprintLogged", True)
+    sentry_sdk.capture_message(f"Logged user on: {channel}", level='info')
     sentry_sdk.flush()
 
-
-def capture_model(frogpilot_toggles):
-  while not system_time_valid():
-    time.sleep(1)
-
-  sentry_sdk.capture_message(f"User using: {frogpilot_toggles.model_name}", level='info')
-
-
-def capture_user(channel):
-  sentry_sdk.capture_message(f"Logged user on: {channel}", level='info')
+  threading.Thread(target=capture_user_thread, daemon=True).start()
 
 
 def set_tag(key: str, value: str) -> None:

@@ -32,15 +32,10 @@ def fix_permissions():
     if current_permissions != desired_permissions:
       print(f"{MAPD_PATH} has the wrong permissions. Attempting to fix...")
       os.chmod(MAPD_PATH, desired_permissions)
-      sentry.capture_exception(Exception(f"Successfully fixed permissions for {MAPD_PATH}"))
   except OSError as error:
-    sentry.capture_exception(Exception(f"Failed to fix permissions for {MAPD_PATH}: {error}"))
+    sentry.capture_exception(error)
 
 def download():
-  if not os.access(MAPD_PATH, os.W_OK):
-    print(f"{MAPD_PATH} is not writable. Attempting to fix permissions...")
-    fix_permissions()
-
   while not (is_url_pingable("https://github.com") or is_url_pingable("https://gitlab.com")):
     time.sleep(60)
 
