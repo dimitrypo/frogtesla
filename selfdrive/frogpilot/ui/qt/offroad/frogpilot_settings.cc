@@ -154,7 +154,7 @@ FrogPilotSettingsWindow::FrogPilotSettingsWindow(SettingsWindow *parent) : QFram
     if (id == 3) {
       FrogPilotConfirmationDialog::toggleAlert(
         tr("The 'Developer' preset is only available for users with either over 50 hours on FrogPilot, or 100 hours with openpilot."),
-        tr("Okay"), this
+        tr("Ok"), this
       );
     }
   });
