@@ -148,14 +148,12 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
   FrogPilotListWidget *gmList = new FrogPilotListWidget(this);
   FrogPilotListWidget *hkgList = new FrogPilotListWidget(this);
   FrogPilotListWidget *toyotaList = new FrogPilotListWidget(this);
+  FrogPilotListWidget *teslaList = new FrogPilotListWidget(this);
 
   std::vector<std::tuple<QString, QString, QString, QString>> vehicleToggles {
     {"GMToggles", tr("General Motors Toggles"), tr("Toggles catered towards 'General Motors' vehicles."), ""},
     {"NewLongAPIGM", tr("Enable comma's New Longitudinal API"), tr("Enable comma's new longitudinal control system that has shown great improvement with acceleration and braking, but has issues on some GM vehicles."), ""},
     {"ExperimentalGMTune", tr("Enable FrogsGoMoo's Experimental Longitudinal Tune"), tr("Enable FrogsGoMoo's experimental GM longitudinal tune that is based on nothing but guesswork. Use at your own risk!"), ""},
-    {"VirtualTorqueBlending", tr("Virtual Torque Blending"), tr("Experimental feature to allow influencing of the steering angle while ALC is active."), ""},
-    {"HybridTACC", tr("Hybrid TACC"), tr("Use a mix between Traffic-Aware Cruise Control (TACC) and openpilot long when a lead vehicle is detected."), ""},
-
     {"VoltSNG", tr("Enable Stop and Go Hack"), tr("Force stop and go for the 2017 Chevy Volt."), ""},
     {"LongPitch", tr("Smoothen Pedal Response While Going Downhill/Uphill"), tr("Smoothen the gas and brake response when driving downhill or uphill."), ""},
 
@@ -167,6 +165,10 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
     {"ClusterOffset", tr("Cluster Speed Offset"), tr("Set the cluster offset openpilot uses to try and match the speed displayed on the dash."), ""},
     {"FrogsGoMoosTweak", tr("Enable FrogsGoMoo's Personal Tweaks"), tr("FrogsGoMoo's personal tweaks that aim to take off faster and stop smoother."), ""},
     {"SNGHack", tr("Enable Stop and Go Hack"), tr("Force stop and go for vehicles without stock stop and go functionality."), ""},
+
+    {"TeslaToggles", tr("Tesla Toggles"), tr("Toggles catered towards 'Tesla' vehicles."), ""},
+    {"HybridTACC", tr("Enable Hybrid TACC"), tr("Use Tesla's TACC for longitudinal control while using openpilot for lateral control."), ""},
+    {"VirtualTorqueBlending", tr("Enable Virtual Torque Blending"), tr("Use virtual torque blending for smoother steering control."), ""},
   };
 
   for (const auto &[param, title, desc, icon] : vehicleToggles) {
@@ -195,6 +197,13 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
         openParentToggle();
       });
       vehicleToggle = toyotaToggle;
+    } else if (param == "TeslaToggles") {
+      ButtonControl *teslaToggle = new ButtonControl(title, tr("MANAGE"), desc);
+      QObject::connect(teslaToggle, &ButtonControl::clicked, [this]() {
+        vehiclesLayout->setCurrentIndex(4);
+        openParentToggle();
+      });
+      vehicleToggle = teslaToggle;
     } else if (param == "ToyotaDoors") {
       std::vector<QString> lockToggles{"LockDoors", "UnlockDoors"};
       std::vector<QString> lockToggleNames{tr("Lock"), tr("Unlock")};
@@ -220,6 +229,8 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
       hkgList->addItem(vehicleToggle);
     } else if (toyotaKeys.find(param) != toyotaKeys.end()) {
       toyotaList->addItem(vehicleToggle);
+    } else if (teslaKeys.find(param) != teslaKeys.end()) {
+      teslaList->addItem(vehicleToggle);
     } else {
       settingsList->addItem(vehicleToggle);
     }
@@ -234,6 +245,8 @@ FrogPilotVehiclesPanel::FrogPilotVehiclesPanel(FrogPilotSettingsWindow *parent) 
   vehiclesLayout->addWidget(hkgPanel);
   ScrollView *toyotaPanel = new ScrollView(toyotaList, this);
   vehiclesLayout->addWidget(toyotaPanel);
+  ScrollView *teslaPanel = new ScrollView(teslaList, this);
+  vehiclesLayout->addWidget(teslaPanel);
 
   std::set<QString> rebootKeys = {"NewLongAPI", "NewLongAPIGM"};
   for (const QString &key : rebootKeys) {
@@ -270,23 +283,22 @@ void FrogPilotVehiclesPanel::updateState(const UIState &s) {
 }
 
 void FrogPilotVehiclesPanel::updateToggles() {
-  bool tesla = carMake == "Tesla";
-
   toggles["GMToggles"]->setVisible(false);
   toggles["HKGToggles"]->setVisible(false);
   toggles["ToyotaToggles"]->setVisible(false);
+  toggles["TeslaToggles"]->setVisible(false);
 
   for (auto &[key, toggle] : toggles) {
     bool setVisible = parent->tuningLevel >= parent->frogpilotToggleLevels[key].toDouble();
 
-    if (tesla && teslaKeys.find(key) != teslaKeys.end()) {
-      setVisible = true;
-    } else if (key == "GMToggles" || gmKeys.find(key) != gmKeys.end()) {
+    if (key == "GMToggles" || gmKeys.find(key) != gmKeys.end()) {
       setVisible = parent->isGM;
     } else if (key == "HKGToggles" || hkgKeys.find(key) != hkgKeys.end()) {
       setVisible = parent->isHKG;
     } else if (key == "ToyotaToggles" || toyotaKeys.find(key) != toyotaKeys.end()) {
       setVisible = parent->isToyota;
+    } else if (key == "TeslaToggles" || teslaKeys.find(key) != teslaKeys.end()) {
+      setVisible = parent->isTesla;
     }
 
     if (longitudinalKeys.find(key) != longitudinalKeys.end()) {
@@ -313,6 +325,10 @@ void FrogPilotVehiclesPanel::updateToggles() {
 
     if (toyotaKeys.find(key) != toyotaKeys.end() && setVisible) {
       toggles["ToyotaToggles"]->setVisible(true);
+    }
+
+    if (teslaKeys.find(key) != teslaKeys.end() && setVisible) {
+      toggles["TeslaToggles"]->setVisible(true);
     }
   }
 

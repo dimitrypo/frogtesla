@@ -26,6 +26,7 @@ public:
   bool isHKGCanFd = true;
   bool isPIDCar = false;
   bool isSubaru = false;
+  bool isTesla = false;
   bool isToyota = true;
   bool isVolt = true;
   bool keepScreenOn = false;

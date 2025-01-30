@@ -249,6 +249,8 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"CECurves", PERSISTENT | FROGPILOT_CONTROLS},
     {"CECurvesLead", PERSISTENT | FROGPILOT_CONTROLS},
     {"CELead", PERSISTENT | FROGPILOT_CONTROLS},
+    {"HybridTACC", PERSISTENT | FROGPILOT_VEHICLES},
+    {"VirtualTorqueBlending", PERSISTENT | FROGPILOT_VEHICLES},
     {"CEModelStopTime", PERSISTENT | FROGPILOT_CONTROLS},
     {"CENavigation", PERSISTENT | FROGPILOT_CONTROLS},
     {"CENavigationIntersections", PERSISTENT | FROGPILOT_CONTROLS},

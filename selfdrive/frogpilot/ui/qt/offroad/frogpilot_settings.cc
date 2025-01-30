@@ -222,6 +222,7 @@ void FrogPilotSettingsWindow::updateVariables() {
     isHKGCanFd = isHKG && safetyModel == cereal::CarParams::SafetyModel::HYUNDAI_CANFD;
     isPIDCar = CP.getLateralTuning().which() == cereal::CarParams::LateralTuning::PID;
     isSubaru = carMake == "subaru";
+    isTesla = carMake == "tesla";
     isToyota = carMake == "toyota";
     isVolt = carFingerprint == "CHEVROLET_VOLT";
     frictionStock = CP.getLateralTuning().getTorque().getFriction();
